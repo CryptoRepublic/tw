@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustWatch</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        #webcam-canvas {
+            width: 100%;
+            max-width: 400px; /* Limita la larghezza del canvas per evitare che diventi troppo grande su schermi grandi */
+            height: auto;
+            max-height: 400px; /* Limita l'altezza del canvas per evitare che diventi troppo grande su schermi grandi */
+        }
+
+        #label-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #label-container div {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TrustWatch Checker</h1>
+    <canvas id="webcam-canvas" width="224" height="224"></canvas>
+    <div id="label-container"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+    <script>
+        const URL = "https://teachablemachine.withgoogle.com/models/GkT4xojds/";
+        let model, webcam, labelContainer, maxPredictions, webcamCanvas;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = false; // whether to flip the webcam
+
+            
+
+            webcam = new tmImage.Webcam(224, 224, flip); // width, height, flip, constraints
+            await webcam.setup({facingMode: "environment"});
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            webcamCanvas = document.getElementById('webcam-canvas');
+            webcamCanvas.getContext('2d').drawImage(webcam.canvas, 0, 0, 224, 224);
+
+            labelContainer = document.getElementById('label-container');
+        }
+
+        async function loop() {
+            webcam.update(); // update the webcam frame
+            webcamCanvas.getContext('2d').drawImage(webcam.canvas, 0, 0, 224, 224);
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        // append elements to the DOM
+        function appendResults(labelProbs) {
+            labelContainer.innerHTML = '';
+            for (let i = 0; i < maxPredictions; i++) {
+                const div = document.createElement('div');
+                const classPrediction =
+                    labelProbs[i].className + ": " + labelProbs[i].probability.toFixed(2);
+                div.innerText = classPrediction;
+                labelContainer.appendChild(div);
+            }
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            appendResults(prediction);
+        }
+
+        init();
+    </script>
+</body>
+</html>
